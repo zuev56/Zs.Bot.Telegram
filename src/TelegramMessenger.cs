@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Exceptions;
+using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types.Enums;
 using Zs.Bot.Data.Abstractions;
 using Zs.Bot.Data.Enums;
@@ -16,6 +17,7 @@ using Zs.Bot.Services.DataSavers;
 using Zs.Bot.Services.Messaging;
 using Zs.Common.Extensions;
 using Zs.Common.Models;
+using BotCommand = Zs.Bot.Services.Commands.BotCommand;
 
 namespace Zs.Bot.Messenger.Telegram;
 
@@ -50,9 +52,15 @@ public sealed class TelegramMessenger : IMessenger
         telegramBotClient.OnApiResponseReceived += BotClient_OnApiResponseReceived;
         telegramBotClient.OnMakingApiRequest += BotClient_OnMakingApiRequest;
 
+        var receiverOptions = new ReceiverOptions
+        {
+            AllowedUpdates = Array.Empty<UpdateType>()
+        };
         telegramBotClient.StartReceiving(
             HandleUpdateAsync,
-            HandleErrorAsync
+            HandleErrorAsync,
+            receiverOptions: receiverOptions,
+            cancellationToken: CancellationToken.None
         );
 
         _inputMessageProcessor = new InputMessageProcessor(chatsRepo, usersRepo, messagesRepo, loggerfFactory?.CreateLogger<InputMessageProcessor>());
@@ -75,7 +83,7 @@ public sealed class TelegramMessenger : IMessenger
 
     #region Обработчики событий TelegramBotClient
 
-    private async Task HandleUpdateAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, CancellationToken cancellationToken)
+    private Task HandleUpdateAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, CancellationToken cancellationToken)
     {
         // TODO: Проверить
         // - Новое сообщение
@@ -104,6 +112,8 @@ public sealed class TelegramMessenger : IMessenger
                 _logger?.LogTrace("TelegramBot other update ({UpdateType})", update.Type);
                 break;
         }
+
+        return Task.CompletedTask;
     }
 
     private Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -313,4 +323,3 @@ public sealed class TelegramMessenger : IMessenger
     }
 
 }
-
