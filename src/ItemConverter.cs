@@ -37,7 +37,7 @@ namespace Zs.Bot.Messenger.Telegram
                 message.MessageTypeId = GetGeneralMessageTypeId(telegramMessage.Type);
                 message.Text = telegramMessage.Text.ReplaceEmojiWithX();
                 message.RawData = serializedMessage.NormalizeJsonString().ReplaceEmojiWithX();
-                message.RawDataHash = message.RawData.GetMD5Hash();
+                message.RawDataHash = message.RawData!.GetMd5Hash();
                 message.IsSucceed = telegramMessage.IsSucceed;
                 message.FailsCount = telegramMessage.SendingFails;
                 message.FailDescription = telegramMessage.FailDescription;
@@ -61,7 +61,7 @@ namespace Zs.Bot.Messenger.Telegram
                 chat.Name = (telegramChat.Title ?? telegramChat.Username ?? $"{telegramChat.FirstName} {telegramChat.LastName}").ReplaceEmojiWithX();
                 chat.ChatTypeId = ToGeneralChatType(telegramChat.Type).ToString().ToUpperInvariant();
                 chat.RawData = serializedChat.NormalizeJsonString().ReplaceEmojiWithX();
-                chat.RawDataHash = chat.RawData.GetMD5Hash();
+                chat.RawDataHash = chat.RawData!.GetMd5Hash();
 
                 return chat;
             }
@@ -82,7 +82,7 @@ namespace Zs.Bot.Messenger.Telegram
                 user.FullName = ($"{telegramUser.FirstName} {telegramUser.LastName}").Trim().ReplaceEmojiWithX();
                 user.IsBot = telegramUser.IsBot;
                 user.RawData = serializedUser.NormalizeJsonString().ReplaceEmojiWithX();
-                user.RawDataHash = user.RawData.GetMD5Hash();
+                user.RawDataHash = user.RawData.GetMd5Hash();
 
                 return user;
             }

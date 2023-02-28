@@ -30,9 +30,9 @@ public sealed class TelegramMessenger : IMessenger
     private readonly IMessageDataSaver _messageDataSaver;
     private readonly ILogger<TelegramMessenger> _logger;
     private string _botName;
-    private readonly List<DateTime> _requestTimeOutExceptionDates = new (100);
-    private readonly List<DateTime> _makingRequestExceptionDates = new(100);
-    private readonly List<ErrorInfo> _errors = new(500);
+    private readonly List<DateTime> _requestTimeOutExceptionDates = new ();
+    private readonly List<DateTime> _makingRequestExceptionDates = new();
+    private readonly List<string> _errors = new();
 
     public event EventHandler<MessageActionEventArgs> MessageReceived;
     public event EventHandler<MessageActionEventArgs> MessageEdited;
@@ -155,33 +155,6 @@ public sealed class TelegramMessenger : IMessenger
             exceptionDates.Clear();
             exceptionDates.TrimExcess();
             exceptionDates.EnsureCapacity(100);
-        }
-    }
-
-    internal void HandleRequestExceptionNew(RequestException exception, TimeSpan collectionPeriod)
-    {
-        // TODO: Use afret test
-        _errors.Add(new(exception.Message));
-
-        var sameErrors = _errors.Where(e => e.Text == exception.Message).OrderBy(e => e.DateTime);
-        var sameErrorsCount = sameErrors.Count();
-
-        if (sameErrorsCount == 1)
-        {
-            _logger?.LogError("Telegram.Bot.API '{ErrorMessage}'", exception.Message);
-            return;
-        }
-
-        var period = sameErrors.Last().DateTime - sameErrors.ElementAt(1).DateTime;
-
-        if (period > collectionPeriod)
-        {
-            _logger?.LogError("Telegram.Bot.API '{ErrorMessage}' was {Amount} times in {TimeIntervalInMinutes} minutes",
-                exception.Message, sameErrorsCount, period.ToString("HH:mm:ss"));
-
-            _errors.RemoveAll(e => e.Text == exception.Message);
-            _errors.TrimExcess();
-            _errors.EnsureCapacity(500);
         }
     }
 

@@ -14,7 +14,7 @@ using Zs.Bot.Data.Abstractions;
 using Zs.Bot.Data.Enums;
 using Zs.Bot.Data.Models;
 using Zs.Bot.Services.Messaging;
-using Zs.Common.Abstractions;
+using Zs.Common.Extensions;
 using Zs.Common.Models;
 using TelegramChat = Telegram.Bot.Types.Chat;
 using TelegramMessage = Telegram.Bot.Types.Message;
@@ -138,10 +138,10 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
             {
                 msgForLog = tgMessage;
 
-                var sendingResult = await SendMessageFinalyAsync(tgMessage, currentTask);
+                var sendingResult = await SendMessageFinallyAsync(tgMessage, currentTask);
 
                 // TODO: Раньше было сравнение с Enum, а теперь стало не столь однозначно - продумать и переделать
-                if (sendingResult.IsSuccess && sendingResult.HasWarnings)
+                if (sendingResult.Successful)// && sendingResult.HasWarnings)
                     continue;
 
                 // When an error occured during sending
@@ -217,7 +217,7 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
         return false;
     }
 
-    private async Task<IOperationResult> SendMessageFinalyAsync(TgMessage message, Task currentTask)
+    private async Task<Result> SendMessageFinallyAsync(TgMessage message, Task currentTask)
     {
         // Telegram.Bot.API не позволяет отправлять сообщения, 
         // содержащие текст вида */command@botName*
@@ -254,7 +254,7 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
                 message.IsSucceed = true;
             }
 
-            return ServiceResult.Success();
+            return Result.Success();
         }
         catch (Exception ex)
         {
@@ -265,7 +265,7 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
                     message.IsSucceed = false;
                     ex.Data.Add("Message", message);
                     _logger?.LogError(ex, "Message sending error (Message: {message})", message);
-                    return ServiceResult.Error("Message sending error");
+                    return Result.Fail(Fault.Unknown.SetMessage("Message sending error"));
                 }
 
                 currentTask.Wait(3000);
@@ -284,7 +284,7 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
                 message.SendingFails++;
                 currentTask.Wait(2000 * message.SendingFails);
                 _outputMessageBuffer.Enqueue(message);
-                return ServiceResult.Warning("Message sending error. Retry...");
+                return Result.Fail(Fault.Unknown.SetMessage("Message sending error. Retry..."));
             }
 
             try
@@ -292,9 +292,9 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
                 message.IsSucceed = false;
                 ex.Data.Add("Message", message);
                 _logger?.LogError(ex, "Message sending error");
-                return ServiceResult.Error("Message sending error");
+                return Result.Fail(Fault.Unknown.SetMessage("Message sending error"));
             }
-            catch { return ServiceResult.Error("Message sending error"); }
+            catch { return Result.Fail(Fault.Unknown.SetMessage("Message sending error")); }
         }
     }
 
@@ -312,10 +312,10 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
 
         var deleteResult = await DeleteMessageAsync(dbChat, dbMessage);
 
-        return deleteResult.IsSuccess;
+        return deleteResult.Successful;
     }
 
-    private async Task<IOperationResult> DeleteMessageAsync(Chat chat, Message message)
+    private async Task<Result> DeleteMessageAsync(Chat chat, Message message)
     {
         TelegramChat tgChat = null;
         TelegramMessage tgMessage = null;
@@ -342,12 +342,12 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
 
             Volatile.Read(ref MessageProcessed)?.Invoke(this, args);
 
-            return ServiceResult.Success();
+            return Result.Success();
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Message deleting error (TelegramChatId: {TelegramChatId}, TelegramMessageId: {TelegramMessageId})", tgChat?.Id, tgMessage?.MessageId);
-            return ServiceResult.Error("Message deleting error");
+            return Result.Fail(Fault.Unknown.SetMessage("Message deleting error"));
         }
     }
 
@@ -373,4 +373,3 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
         }
     }
 }
-
