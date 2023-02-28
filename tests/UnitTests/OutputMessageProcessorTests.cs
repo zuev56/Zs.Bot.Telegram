@@ -135,10 +135,9 @@ public class OutputMessageProcessorTests
     }
 
     [Theory]
-    [InlineData("Message text", Role.Admin)]
-    [InlineData("Message text", Role.Owner, Role.Admin)]
+    [InlineData("Message text", new[] { Role.Admin })]
     [InlineData("Message text", new[] { Role.Owner, Role.Admin })]
-    public async Task EnqueueMessage_WithRoles_ReturnsTrue(string messageText, params Role[] roles)
+    public async Task EnqueueMessage_WithRoles_ReturnsTrue(string messageText, Role[] roles)
     {
         // Arrange
         var outputMessageProcessor = CreateOutputMessageProcessor();
@@ -151,13 +150,12 @@ public class OutputMessageProcessorTests
     }
 
     [Theory]
-    [InlineData(null, Role.Admin)]
-    [InlineData("", Role.Admin)]
-    [InlineData("  ", Role.Admin)]
+    [InlineData(null, new[] { Role.Admin })]
+    [InlineData("", new[] { Role.Admin })]
+    [InlineData("  ", new[] { Role.Admin })]
     [InlineData("Message text", new Role[] { })]
     [InlineData("Message text", null)]
-    [InlineData("Message text")]
-    public async Task EnqueueMessage_WithRoles_ReturnsFalse(string messageText, params Role[] roles)
+    public async Task EnqueueMessage_WithRoles_ReturnsFalse(string messageText, Role[] roles)
     {
         // Arrange
         var outputMessageProcessor = CreateOutputMessageProcessor();

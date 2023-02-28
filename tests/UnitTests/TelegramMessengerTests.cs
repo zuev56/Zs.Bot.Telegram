@@ -64,9 +64,9 @@ namespace UnitTests
         }
 
         [Theory]
-        [InlineData(Role.Admin)]
+        [InlineData(new[] { Role.Admin })]
         [InlineData(new[] { Role.Admin, Role.Owner })]
-        public async Task AddMessageToOutboxAsync_CorrectParameters_ReturnsTrue(params Role[] roles)
+        public async Task AddMessageToOutboxAsync_CorrectParameters_ReturnsTrue(Role[] roles)
         {
             // Arrange
             var telegramMessenger = GetTelegramMessenger();
@@ -82,11 +82,11 @@ namespace UnitTests
         [Theory]
         [InlineData("", null)]
         [InlineData("", new Role[] { })]
-        [InlineData("", Role.Admin)]
+        [InlineData("", new[] { Role.Admin })]
         [InlineData("", new[] { Role.Admin, Role.Owner })]
         [InlineData("MessageText", new Role[] { })]
         [InlineData("MessageText", null)]
-        public async Task AddMessageToOutboxAsync_WrongParameters_ReturnsFalse(string messageText, params Role[] roles)
+        public async Task AddMessageToOutboxAsync_WrongParameters_ReturnsFalse(string messageText, Role[] roles)
         {
             // Arrange
             var telegramMessenger = GetTelegramMessenger();

@@ -146,16 +146,9 @@ namespace Zs.Bot.Messenger.Telegram
                 s == MessageType.MigratedFromGroup ||
                 s == MessageType.Unknown ||
                 s == MessageType.MessageAutoDeleteTimerChanged ||
-                s == MessageType.ProximityAlertTriggered ||
-                s == MessageType.VoiceChatScheduled ||
-                s == MessageType.VoiceChatStarted ||
-                s == MessageType.VoiceChatEnded ||
-                s == MessageType.VoiceChatParticipantsInvited => "SRV",
+                s == MessageType.ProximityAlertTriggered => "SRV",
 
                 _ => "UKN"
-
-
-                
             };
         }
     }
