@@ -6,7 +6,7 @@ using Zs.Bot.Data.PostgreSQL.Repositories;
 
 namespace UnitTests.Data;
 
-public class PostgreSqlInMemory
+internal sealed class PostgreSqlInMemory
 {
     public ChatsRepository<PostgreSqlBotContext> ChatsRepository { get; }
     public UsersRepository<PostgreSqlBotContext> UsersRepository { get; }
@@ -37,12 +37,9 @@ public class PostgreSqlInMemory
         var messages = StubFactory.CreateMessages(chatIdForMessages, entitiesCount);
         var users = StubFactory.CreateUsers(entitiesCount);
 
-
-        Task.WaitAll(new Task[]
-        {
+        Task.WaitAll(
             ChatsRepository.SaveRangeAsync(chat),
             UsersRepository.SaveRangeAsync(users),
-            MessagesRepository.SaveRangeAsync(messages)
-        });
+            MessagesRepository.SaveRangeAsync(messages));
     }
 }

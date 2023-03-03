@@ -1,86 +1,63 @@
-﻿using UnitTests.Data;
+﻿using System;
+using FluentAssertions;
+using UnitTests.Data;
 using Xunit;
 using Zs.Bot.Data.Enums;
 using Zs.Bot.Messenger.Telegram;
 
-namespace UnitTests
+namespace UnitTests;
+
+public sealed class InputMessageProcessorTests
 {
-    public class InputMessageProcessorTests
+    private const int DbEntitiesAmount = 100;
+    private const int DbChatIdForMessages = 1;
+
+    [Fact]
+    public void EnqueueMessage_CorrectMessage_notThrowException()
     {
-        private const int _dbEntitiesAmount = 100;
-        private const int _dbChatIdForMessages = 1;
+        var inputMessageProcessor = CreateInputMessageProcessor();
+        var message = StubFactory.CreateTelegramMessage("Message text");
+        var tgMessage = new TgMessage(message);
 
-        [Fact]
-        public void EnqueueMessage_CorrectMessage_returnsTrue()
-        {
-            // Arrange
-            var inputMessageProcessor = CreateIntputMessageProcessor();
-            var message = StubFactory.CreateTelegramMessage("Message text");
-            var tgMessage = new TgMessage(message);
+        var action = () => inputMessageProcessor.EnqueueMessage(tgMessage, out _);
 
-            // Act
-            var isSuccess = inputMessageProcessor.EnqueueMessage(tgMessage, out var messageActionEventArgs);
+        action.Should().NotThrow();
+    }
 
-            // Assert
-            Assert.True(isSuccess);
-        }
+    [Fact]
+    public void EnqueueMessage_CorrectMessage_returnsCorrectEventArgs()
+    {
+        var inputMessageProcessor = CreateInputMessageProcessor();
+        var message = StubFactory.CreateTelegramMessage("Message text");
+        var tgMessage = new TgMessage(message);
 
-        [Fact]
-        public void EnqueueMessage_CorrectMessage_returnsCorrectEventArgs()
-        {
-            // Arrange
-            var inputMessageProcessor = CreateIntputMessageProcessor();
-            var message = StubFactory.CreateTelegramMessage("Message text");
-            var tgMessage = new TgMessage(message);
+        inputMessageProcessor.EnqueueMessage(tgMessage, out var messageActionEventArgs);
 
-            // Act
-            inputMessageProcessor.EnqueueMessage(tgMessage, out var messageActionEventArgs);
+        Assert.Equal(MessageAction.Received, messageActionEventArgs.Action);
+        Assert.NotNull(messageActionEventArgs.Chat);
+        Assert.NotNull(messageActionEventArgs.User);
+        Assert.NotNull(messageActionEventArgs.Message);
+        Assert.False(messageActionEventArgs.IsHandled);
+    }
 
-            // Assert
-            Assert.Equal(MessageAction.Received, messageActionEventArgs.Action);
-            Assert.NotNull(messageActionEventArgs.Chat);
-            Assert.NotNull(messageActionEventArgs.User);
-            Assert.NotNull(messageActionEventArgs.Message);
-            Assert.False(messageActionEventArgs.IsHandled);
-        }
+    [Fact]
+    public void EnqueueMessage_NullableMessage_throwArgumentNullException()
+    {
+        var inputMessageProcessor = CreateInputMessageProcessor();
 
-        [Fact]
-        public void EnqueueMessage_NullableMessage_returnsFalse()
-        {
-            // Arrange
-            var inputMessageProcessor = CreateIntputMessageProcessor();
+        var action = () => inputMessageProcessor.EnqueueMessage(tgMessage: null!, out _);
 
-            // Act
-            var isSuccess = inputMessageProcessor.EnqueueMessage(tgMessage: null, out var _);
+        action.Should().Throw<ArgumentNullException>();
+    }
 
-            // Assert
-            Assert.False(isSuccess);
-        }
+    private static IInputMessageProcessor CreateInputMessageProcessor()
+    {
+        var postgreSqlInMemory = new PostgreSqlInMemory();
+        postgreSqlInMemory.FillWithFakeData(DbEntitiesAmount);
 
-        [Fact]
-        public void EnqueueMessage_NullableMessage_returnsNullableEventArgs()
-        {
-            // Arrange
-            var inputMessageProcessor = CreateIntputMessageProcessor();
-
-            // Act
-            inputMessageProcessor.EnqueueMessage(tgMessage: null, out var messageActionEventArgs);
-
-            // Assert
-            Assert.Null(messageActionEventArgs);
-        }
-
-
-
-        private IInputMessageProcessor CreateIntputMessageProcessor()
-        {
-            var postgreSqlInMemory = new PostgreSqlInMemory();
-            postgreSqlInMemory.FillWithFakeData(_dbEntitiesAmount, _dbChatIdForMessages);
-
-            return new InputMessageProcessor(
-                postgreSqlInMemory.ChatsRepository,
-                postgreSqlInMemory.UsersRepository,
-                postgreSqlInMemory.MessagesRepository);
-        }
+        return new InputMessageProcessor(
+            postgreSqlInMemory.ChatsRepository,
+            postgreSqlInMemory.UsersRepository,
+            postgreSqlInMemory.MessagesRepository);
     }
 }

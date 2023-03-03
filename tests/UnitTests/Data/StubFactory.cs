@@ -7,9 +7,9 @@ using TelegramUser = Telegram.Bot.Types.User;
 
 namespace UnitTests.Data;
 
-public class StubFactory
+internal static class StubFactory
 {
-    public static Chat CreateChat(int chatId = 0)
+    internal static Chat CreateChat(int chatId = 0)
     {
         chatId = PrepareId(chatId);
 
@@ -34,17 +34,19 @@ public class StubFactory
     private static int PrepareId(int id)
         => id != 0 ? id : Random.Shared.Next(1, 9999);
 
-    public static Chat[] CreateChats(int amount)
+    internal static Chat[] CreateChats(int amount)
     {
         var chats = new Chat[amount];
 
-        for (int i = 0; i < amount; i++)
+        for (var i = 0; i < amount; i++)
+        {
             chats[i] = CreateChat(i + 1);
+        }
 
         return chats;
     }
 
-    public static User CreateUser(int userId = 0)
+    internal static User CreateUser(int userId = 0)
     {
         userId = PrepareId(userId);
 
@@ -65,21 +67,23 @@ public class StubFactory
         };
     }
 
-    public static User[] CreateUsers(int amount)
+    internal static User[] CreateUsers(int amount)
     {
         var users = new User[amount];
 
-        for (int i = 0; i < amount; i++)
+        for (var i = 0; i < amount; i++)
+        {
             users[i] = CreateUser(i + 1);
+        }
 
         return users;
     }
 
-    public static Message CreateMessage(int chatId, int messageId = 0)
+    internal static Message CreateMessage(int chatId, int messageId = 0)
     {
         messageId = PrepareId(messageId);
 
-        return new Message()
+        return new Message
         {
             Id = messageId,
             ChatId = chatId,
@@ -93,18 +97,20 @@ public class StubFactory
         };
     }
 
-    public static Message[] CreateMessages(int chatId, int amount)
+    internal static Message[] CreateMessages(int chatId, int amount)
     {
         var messages = new Message[amount];
 
-        for (int i = 0; i < amount; i++)
+        for (var i = 0; i < amount; i++)
+        {
             messages[i] = CreateMessage(chatId, i + 1);
+        }
 
         return messages;
 
     }
 
-    public static TelegramMessage CreateTelegramMessage(string messageText, int messageId = 0, int chatId = 0, int userId = 0)
+    internal static TelegramMessage CreateTelegramMessage(string messageText, int messageId = 0, int chatId = 0, int userId = 0)
     {
         messageId = PrepareId(messageId);
         chatId = PrepareId(chatId);
@@ -120,7 +126,7 @@ public class StubFactory
         };
     }
 
-    public static TelegramChat CreateTelegramChat(int chatId = 0)
+    internal static TelegramChat CreateTelegramChat(int chatId = 0)
     {
         chatId = PrepareId(chatId);
 
@@ -134,11 +140,11 @@ public class StubFactory
         };
     }
 
-    public static TelegramUser CreateTelegramUser(int userId = 0)
+    internal static TelegramUser CreateTelegramUser(int userId = 0)
     {
         userId = PrepareId(userId);
 
-        return new TelegramUser()
+        return new TelegramUser
         {
             Id = userId,
             IsBot = false,
@@ -147,7 +153,7 @@ public class StubFactory
         };
     }
 
-    public static TelegramUser CreateTelegramBot(int userId = 0)
+    internal static TelegramUser CreateTelegramBot(int userId = 0)
     {
         userId = PrepareId(userId);
 
@@ -159,6 +165,4 @@ public class StubFactory
             Username = $"stubBot_{userId}"
         };
     }
-
-
 }
