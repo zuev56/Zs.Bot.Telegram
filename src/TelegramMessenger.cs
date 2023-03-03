@@ -9,6 +9,7 @@ using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Extensions.Polling;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Zs.Bot.Data.Abstractions;
 using Zs.Bot.Data.Enums;
@@ -16,8 +17,9 @@ using Zs.Bot.Services.Commands;
 using Zs.Bot.Services.DataSavers;
 using Zs.Bot.Services.Messaging;
 using Zs.Common.Extensions;
-using Zs.Common.Models;
 using BotCommand = Zs.Bot.Services.Commands.BotCommand;
+using Chat = Zs.Bot.Data.Models.Chat;
+using Message = Zs.Bot.Data.Models.Message;
 
 namespace Zs.Bot.Messenger.Telegram;
 
@@ -26,27 +28,26 @@ public sealed class TelegramMessenger : IMessenger
     // TODO: получение информации о боте и удаление сообщений не совсем уместны в сервисах IMessenger и IOutputMessageProcessor
     private readonly IInputMessageProcessor _inputMessageProcessor;
     private readonly IOutputMessageProcessor _outputMessageProcessor;
-    private readonly ICommandManager _commandManager;
-    private readonly IMessageDataSaver _messageDataSaver;
-    private readonly ILogger<TelegramMessenger> _logger;
-    private string _botName;
+    private readonly ICommandManager? _commandManager;
+    private readonly IMessageDataSaver? _messageDataSaver;
+    private readonly ILogger<TelegramMessenger>? _logger;
+    private string? _botName;
     private readonly List<DateTime> _requestTimeOutExceptionDates = new ();
     private readonly List<DateTime> _makingRequestExceptionDates = new();
-    private readonly List<string> _errors = new();
 
-    public event EventHandler<MessageActionEventArgs> MessageReceived;
-    public event EventHandler<MessageActionEventArgs> MessageEdited;
-    public event EventHandler<MessageActionEventArgs> MessageSent;
-    public event EventHandler<MessageActionEventArgs> MessageDeleted;
+    public event EventHandler<MessageActionEventArgs>? MessageReceived;
+    public event EventHandler<MessageActionEventArgs>? MessageEdited;
+    public event EventHandler<MessageActionEventArgs>? MessageSent;
+    public event EventHandler<MessageActionEventArgs>? MessageDeleted;
 
     public TelegramMessenger(
         ITelegramBotClient telegramBotClient,
         IChatsRepository chatsRepo,
         IUsersRepository usersRepo,
         IMessagesRepository messagesRepo,
-        IMessageDataSaver messageDataSaver = null,
-        ICommandManager commandManager = null,
-        ILoggerFactory loggerfFactory = null)
+        IMessageDataSaver? messageDataSaver = null,
+        ICommandManager? commandManager = null,
+        ILoggerFactory? loggerFactory = null)
     {
 
         telegramBotClient.OnApiResponseReceived += BotClient_OnApiResponseReceived;
@@ -63,10 +64,10 @@ public sealed class TelegramMessenger : IMessenger
             cancellationToken: CancellationToken.None
         );
 
-        _inputMessageProcessor = new InputMessageProcessor(chatsRepo, usersRepo, messagesRepo, loggerfFactory?.CreateLogger<InputMessageProcessor>());
+        _inputMessageProcessor = new InputMessageProcessor(chatsRepo, usersRepo, messagesRepo, loggerFactory?.CreateLogger<InputMessageProcessor>());
         _inputMessageProcessor.MessageProcessed += InputMessageProcessor_MessageProcessed;
 
-        _outputMessageProcessor = new OutputMessageProcessor(telegramBotClient, chatsRepo, usersRepo, messagesRepo, loggerfFactory?.CreateLogger<OutputMessageProcessor>());
+        _outputMessageProcessor = new OutputMessageProcessor(telegramBotClient, chatsRepo, usersRepo, loggerFactory?.CreateLogger<OutputMessageProcessor>());
         _outputMessageProcessor.MessageProcessed += OutputMessageProcessor_MessageProcessed;
 
         _messageDataSaver = messageDataSaver;
@@ -77,13 +78,13 @@ public sealed class TelegramMessenger : IMessenger
             _commandManager.CommandCompleted += CommandManager_CommandCompleted;
         }
 
-        _logger = loggerfFactory?.CreateLogger<TelegramMessenger>();
+        _logger = loggerFactory?.CreateLogger<TelegramMessenger>();
 
     }
 
     #region Обработчики событий TelegramBotClient
 
-    private Task HandleUpdateAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, CancellationToken cancellationToken)
+    private Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
         // TODO: Проверить
         // - Новое сообщение
@@ -96,20 +97,19 @@ public sealed class TelegramMessenger : IMessenger
                 {
                     // TODO: Extract method
                     _logger?.LogInformationIfNeed("Receive message (TelegramChatId: {TelegramChatId}, TelegramMessageId: {TelegramMessageId}, Text: {MessageText})", update.Message.Chat.Id, update.Message.MessageId, update.Message.Text);
-                    var enqueueIsSuccess = _inputMessageProcessor.EnqueueMessage(new TgMessage(update.Message), out var messageActionEventArgs);
-                    // TODO: Add check
+                    _inputMessageProcessor.EnqueueMessage(new TgMessage(update.Message), out var messageActionEventArgs);
                     break;
                 }
             case UpdateType.EditedMessage:
                 {
                     // TODO: Extract method
                     _logger?.LogInformationIfNeed("Edit message (TelegramChatId: {TelegramChatId}, TelegramMessageId: {TelegramMessageId}, Text: {MessageText})", update.EditedMessage.Chat.Id, update.EditedMessage.MessageId, update.EditedMessage.Text);
-                    var enqueueIsSuccess = _inputMessageProcessor.EnqueueMessage(new TgMessage(update.EditedMessage), out var messageActionEventArgs);
+                    _inputMessageProcessor.EnqueueMessage(new TgMessage(update.EditedMessage), out var messageActionEventArgs);
                     // TODO: Add check
                     break;
                 }
             default:
-                _logger?.LogTrace("TelegramBot other update ({UpdateType})", update.Type);
+                _logger?.LogTraceIfNeed("TelegramBot other update ({UpdateType})", update.Type);
                 break;
         }
 
@@ -135,7 +135,7 @@ public sealed class TelegramMessenger : IMessenger
             //HandleRequestExceptionNew(rex, 600);
         }
 
-        _logger?.LogError(exception, "Telegram.Bot.API error: {Message}", exception.Message);
+        _logger?.LogErrorIfNeed(exception, "Telegram.Bot.API error: {Message}", exception.Message);
         return Task.CompletedTask;
     }
 
@@ -149,8 +149,8 @@ public sealed class TelegramMessenger : IMessenger
         if (exceptionDates.Count > limit
             && exceptionDates.Last() - exceptionDates.First() > TimeSpan.FromSeconds(seconds))
         {
-            _logger?.LogError("Telegram.Bot.API '{ExceptionMessage}' was {Amount} times in {TimeIntervalInMinutes} minutes",
-                exceptionMessage, exceptionDates.Count, (int)(seconds / 60));
+            _logger?.LogErrorIfNeed("Telegram.Bot.API '{ExceptionMessage}' was {Amount} times in {TimeIntervalInMinutes} minutes",
+                exceptionMessage, exceptionDates.Count, (seconds / 60));
 
             exceptionDates.Clear();
             exceptionDates.TrimExcess();
@@ -160,32 +160,34 @@ public sealed class TelegramMessenger : IMessenger
 
     private ValueTask BotClient_OnApiResponseReceived(ITelegramBotClient botClient, ApiResponseEventArgs e, CancellationToken cancellationToken = default)
     {
-        _logger?.LogTrace("ApiResponseReceived", e);
+        _logger?.LogTraceIfNeed("ApiResponseReceived", e);
         return ValueTask.CompletedTask;
     }
 
     private ValueTask BotClient_OnMakingApiRequest(ITelegramBotClient botClient, ApiRequestEventArgs e, CancellationToken cancellationToken = default)
     {
-        _logger?.LogTrace("MakingApiRequest", e);
+        _logger?.LogTraceIfNeed("MakingApiRequest", e);
         return ValueTask.CompletedTask;
     }
 
     #endregion
 
-    private async void InputMessageProcessor_MessageProcessed(object sender, MessageActionEventArgs e)
+    private async void InputMessageProcessor_MessageProcessed(object? sender, MessageActionEventArgs e)
     {
         switch (e.Action)
         {
             case MessageAction.Received:
                 if (_messageDataSaver is not null)
+                {
                     await _messageDataSaver.SaveNewMessageData(e).ConfigureAwait(false);
+                }
 
                 Volatile.Read(ref MessageReceived)?.Invoke(this, e);
                 if (!e.IsHandled)
                 {
-                    if (_commandManager is not null
+                    if (_commandManager is not null && e.Message.Text is not null
                         && BotCommand.IsCommand(e.Message.Text, _botName)
-                        && !await _commandManager.TryEnqueueCommandAsync(e.Message))
+                        && !await _commandManager.TryEnqueueCommandAsync(e.Message).ConfigureAwait(false))
                     {
                         _outputMessageProcessor.EnqueueMessage(e.Chat, $"Unknown command '{e.Message.Text}'");
                     }
@@ -194,14 +196,16 @@ public sealed class TelegramMessenger : IMessenger
                 break;
             case MessageAction.Edited:
                 if (_messageDataSaver is not null)
+                {
                     await _messageDataSaver.EditSavedMessage(e).ConfigureAwait(false);
+                }
 
                 Volatile.Read(ref MessageEdited)?.Invoke(this, e);
                 break;
         }
     }
 
-    private async void OutputMessageProcessor_MessageProcessed(object sender, MessageActionEventArgs e)
+    private async void OutputMessageProcessor_MessageProcessed(object? sender, MessageActionEventArgs e)
     {
         if (_messageDataSaver is not null)
             await _messageDataSaver.SaveNewMessageData(e).ConfigureAwait(false);
@@ -218,27 +222,29 @@ public sealed class TelegramMessenger : IMessenger
     }
 
 
-    private void CommandManager_CommandCompleted(object sender, CommandResult result)
+    private void CommandManager_CommandCompleted(object? sender, CommandResult result)
     {
         _outputMessageProcessor.EnqueueMessage(result.ChatIdForAnswer, result.Text);
     }
 
-    public bool AddMessageToOutbox(Data.Models.Chat chat, string messageText, Data.Models.Message messageToReply = null)
+    public bool AddMessageToOutbox(Chat chat, string messageText, Message? messageToReply = null)
     {
         // TODO: Remove try\catch and change tests
         try
         {
-            if (chat is null)
-                throw new ArgumentNullException(nameof(chat));
+            ArgumentNullException.ThrowIfNull(chat);
 
             if (string.IsNullOrWhiteSpace(messageText))
+            {
                 throw new ArgumentNullException(nameof(messageText));
+            }
 
-            return _outputMessageProcessor.EnqueueMessage(chat, messageText, messageToReply);
+            _outputMessageProcessor.EnqueueMessage(chat, messageText, messageToReply);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Adding a message to outbox error. ChatId = {ChatId}, MessageText = {MessageText}", chat?.Id, messageText);
+            _logger?.LogErrorIfNeed(ex, "Adding a message to outbox error. ChatId = {ChatId}, MessageText = {MessageText}", chat?.Id, messageText);
             return false;
         }
     }
@@ -249,48 +255,54 @@ public sealed class TelegramMessenger : IMessenger
         try
         {
             if (string.IsNullOrWhiteSpace(messageText))
+            {
                 throw new ArgumentNullException(nameof(messageText));
+            }
 
             if (userRoles is null || userRoles.Length == 0)
+            {
                 throw new ArgumentNullException(nameof(userRoles));
+            }
 
-            return await _outputMessageProcessor.EnqueueMessageAsync(messageText, userRoles).ConfigureAwait(false);
+            await _outputMessageProcessor.EnqueueMessageAsync(messageText, userRoles).ConfigureAwait(false);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Adding a message to outbox error. MessageText = {MessageText}, UserRoles = {UserRoles}", messageText, userRoles);
+            _logger?.LogErrorIfNeed(ex, "Adding a message to outbox error. MessageText = {MessageText}, UserRoles = {UserRoles}", messageText, userRoles);
             return false;
         }
     }
 
-    public async Task<bool> DeleteMessageAsync(Data.Models.Message message)
+    public async Task<bool> DeleteMessageAsync(Message message)
     {
         // TODO: Remove try\catch and change tests
         try
         {
-            if (message == null)
-                throw new ArgumentNullException(nameof(message));
+            ArgumentNullException.ThrowIfNull(message);
 
-            return await _outputMessageProcessor.DeleteMessageAsync(message);
+            return await _outputMessageProcessor.DeleteMessageAsync(message).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Message deleting error. MessageId = {MessageId}", message?.Id);
+            _logger?.LogErrorIfNeed(ex, "Message deleting error. MessageId = {MessageId}", message.Id);
             return false;
         }
     }
 
     public async Task<JsonElement> GetBotInfoAsync(CancellationToken cancellationToken = default)
     {
-        var bot = await _outputMessageProcessor.BotClient.GetMeAsync(cancellationToken);
+        var bot = await _outputMessageProcessor.BotClient.GetMeAsync(cancellationToken).ConfigureAwait(false);
 
-        _logger?.LogInformation("Get bot info: {Bot}", bot);
+        _logger?.LogInformationIfNeed("Get bot info: {Bot}", bot);
 
-        string json = JsonSerializer.Serialize(bot);
+        var json = JsonSerializer.Serialize(bot);
 
         var botInfo = JsonSerializer.Deserialize<JsonElement>(json);
         if (_botName == null && botInfo.ValueKind != JsonValueKind.Null)
-            _botName = botInfo.EnumerateObject().FirstOrDefault(i => i.Name == "Username").Value.ToString();
+        {
+            _botName = botInfo.EnumerateObject().FirstOrDefault(static i => i.Name == "Username").Value.ToString();
+        }
 
         return botInfo;
     }
