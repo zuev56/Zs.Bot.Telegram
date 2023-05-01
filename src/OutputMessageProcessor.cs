@@ -119,9 +119,10 @@ internal sealed class OutputMessageProcessor : IOutputMessageProcessor
 
                 var sendingResult = await SendMessageFinallyAsync(tgMessage, currentTask).ConfigureAwait(false);
 
-                // TODO: Раньше было сравнение с Enum, а теперь стало не столь однозначно - продумать и переделать
-                if (sendingResult.Successful) // && sendingResult.HasWarnings)
+                if (!sendingResult.Successful)
                 {
+                    var error = $"{sendingResult.Fault}: {sendingResult.Fault!.Message}";
+                    _logger?.LogErrorIfNeed("Message '{text}' sending error: {error}", tgMessage.Text?.ReplaceEndingWithThreeDots(10), error);
                     continue;
                 }
 
