@@ -110,12 +110,13 @@ public sealed class BotClient : IBotClient
         return Task.CompletedTask;
     }
 
-    public async Task<DbMessage> SendMessageAsync(string text, DbChat chat, long? replyToMessageId = null, CancellationToken cancellationToken = default)
+    public async Task<DbMessage> SendMessageAsync(string text, DbChat chat, DbMessage? messageToReply, CancellationToken cancellationToken = default)
     {
         text = PrepareMessageText(text);
         var telegramChat = JsonSerializer.Deserialize<Chat>(chat.RawData)!;
+        var telegramMessage = messageToReply != null ? JsonSerializer.Deserialize<Message>(messageToReply.RawData) : null;
         var message = await _telegramBotClient.SendTextMessageAsync(
-            telegramChat.Id, text, replyToMessageId: (int?)replyToMessageId, cancellationToken: cancellationToken);
+            telegramChat.Id, text, replyToMessageId: telegramMessage?.MessageId, cancellationToken: cancellationToken);
 
         await StartMessagePipelineAsync(message, MessageAction.Sent, cancellationToken);
 
