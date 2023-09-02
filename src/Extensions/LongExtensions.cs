@@ -8,6 +8,7 @@ public static class LongExtensions
     {
         return new Chat
         {
+            Id = telegramChatId,
             RawData = $"{{ \"Id\": {telegramChatId} }}"
         };
     }

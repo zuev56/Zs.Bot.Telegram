@@ -12,7 +12,6 @@ using Zs.Bot.Services.Messaging;
 using Zs.Bot.Services.Pipeline;
 using Zs.Bot.Telegram.Extensions;
 using Zs.Common.Extensions;
-using Chat = Telegram.Bot.Types.Chat;
 using DbChat = Zs.Bot.Data.Models.Chat;
 using DbMessage = Zs.Bot.Data.Models.Message;
 using Message = Telegram.Bot.Types.Message;
@@ -113,10 +112,10 @@ public sealed class BotClient : IBotClient
     public async Task<DbMessage> SendMessageAsync(string text, DbChat chat, DbMessage? messageToReply, CancellationToken cancellationToken = default)
     {
         text = PrepareMessageText(text);
-        var telegramChat = JsonSerializer.Deserialize<Chat>(chat.RawData)!;
-        var telegramMessage = messageToReply != null ? JsonSerializer.Deserialize<Message>(messageToReply.RawData) : null;
+        var telegramChatId = chat.Id;
+        var replyToMessageId = (int?)messageToReply?.Id;
         var message = await _telegramBotClient.SendTextMessageAsync(
-            telegramChat.Id, text, replyToMessageId: telegramMessage?.MessageId, cancellationToken: cancellationToken);
+            telegramChatId, text, replyToMessageId: replyToMessageId, cancellationToken: cancellationToken);
 
         await StartMessagePipelineAsync(message, MessageAction.Sent, cancellationToken);
 
@@ -133,12 +132,11 @@ public sealed class BotClient : IBotClient
 
     public async Task DeleteMessageAsync(DbMessage message, CancellationToken cancellationToken = default)
     {
-        var telegramMessage = JsonSerializer.Deserialize<Message>(message.RawData)!;
-        var chatId = telegramMessage.Chat.Id;
-        var messageId = telegramMessage.MessageId;
-
+        var chatId = message.ChatId;
+        var messageId = (int)message.Id;
         await _telegramBotClient.DeleteMessageAsync(chatId, messageId, cancellationToken: cancellationToken);
 
+        var telegramMessage = JsonSerializer.Deserialize<Message>(message.RawData)!;
         await StartMessagePipelineAsync(telegramMessage, MessageAction.Deleted, cancellationToken);
     }
 

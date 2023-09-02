@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
     <PackageId>Zs.Bot.Telegram</PackageId>
-    <Version>7.1.1</Version>
+    <Version>7.1.2</Version>
     <Authors>zuev56 (Sergei Zuev)</Authors>
     <Company>zuev56 (Sergei Zuev)</Company>
     <RepositoryUrl>https://github.com/zuev56/Zs.Bot.Telegram</RepositoryUrl>

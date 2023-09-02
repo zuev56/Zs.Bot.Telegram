@@ -61,6 +61,7 @@ internal static class TelegramTypesExtensions
     {
         var message = new DbMessage
         {
+            Id = telegramMessage.MessageId,
             ChatId = telegramMessage.Chat.Id,
             UserId = telegramMessage.From!.Id,
             ReplyToMessageId = telegramMessage.ReplyToMessage?.MessageId,
